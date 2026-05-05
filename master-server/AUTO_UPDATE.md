@@ -34,12 +34,21 @@ This server now exposes:
 - `GET /updates/program/manifest`
 - `GET /updates/program/files/<path>`
 
-The manifest source file is:
+Optional server env:
+- `PROGRAM_UPDATE_SOURCE_URL`: GitHub raw folder URL or manifest URL for the program release source
+
+By default, the manifest source file is:
 - `master-server/updates/program/manifest.json`
 
-The payload files are read from:
+By default, the payload files are read from:
 - `master-server/updates/program/files/`
 
 You can stage a new program release by replacing files in `updates/program/files`, bumping `updates/program/manifest.json` `version`, then restarting the server.
 
 The manifest can omit `url` for each file. The server will generate file URLs automatically from request host/protocol.
+
+If `PROGRAM_UPDATE_SOURCE_URL` is set, the server will pull `manifest.json` and `files/<path>` from that remote source instead of the local `updates/program` folder. This is intended for GitHub raw URLs, for example:
+- `https://raw.githubusercontent.com/<owner>/<repo>/<branch>/program/`
+- `https://raw.githubusercontent.com/<owner>/<repo>/<branch>/program/manifest.json`
+
+The server still serves the same local endpoints to clients; it just proxies the release from GitHub.

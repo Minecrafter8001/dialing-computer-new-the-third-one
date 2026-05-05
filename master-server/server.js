@@ -2,6 +2,7 @@
 // Serves addresses.json via a simple REST API for ComputerCraft
 
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const updater = require("./updater");
@@ -13,6 +14,7 @@ const DATA_FILE = path.join(__dirname, "addresses.json");
 const PROGRAM_UPDATE_ROOT = path.join(__dirname, "updates", "program");
 const PROGRAM_MANIFEST_FILE = path.join(PROGRAM_UPDATE_ROOT, "manifest.json");
 const PROGRAM_FILES_ROOT = path.join(PROGRAM_UPDATE_ROOT, "files");
+const PROGRAM_UPDATE_SOURCE_URL = process.env.PROGRAM_UPDATE_SOURCE_URL || "";
 const EMPTY_STORE = { addresses: [] };
 
 const AUTO_UPDATE_ENABLED = process.env.AUTO_UPDATE_ENABLED === "true";
@@ -122,6 +124,42 @@ function safeReadJSONFile(filePath) {
     }
 }
 
+function getHttpClient(url) {
+    return url.startsWith("https://") ? https : http;
+}
+
+function fetchText(url) {
+    return new Promise((resolve, reject) => {
+        const client = getHttpClient(url);
+        client
+            .get(url, response => {
+                if (response.statusCode && response.statusCode >= 400) {
+                    reject(new Error(`HTTP ${response.statusCode} while fetching ${url}`));
+                    response.resume();
+                    return;
+                }
+
+                let body = "";
+                response.setEncoding("utf8");
+                response.on("data", chunk => {
+                    body += chunk;
+                });
+                response.on("end", () => resolve(body));
+            })
+            .on("error", reject);
+    });
+}
+
+async function fetchJSON(url) {
+    const text = await fetchText(url);
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        throw new Error(`Invalid JSON from ${url}`);
+    }
+}
+
 function sendText(res, status, text, contentType) {
     const body = String(text);
     res.writeHead(status, {
@@ -150,7 +188,87 @@ function encodePathSegments(relativePath) {
         .join("/");
 }
 
-function normalizeProgramManifest(rawManifest, hostHeader) {
+function normalizeRemoteProgramUpdateSource(sourceUrl) {
+    if (typeof sourceUrl !== "string" || sourceUrl.trim() === "") {
+        return null;
+    }
+
+    const trimmed = sourceUrl.trim();
+
+    try {
+        const manifestUrl = trimmed.endsWith("/manifest.json")
+            ? trimmed
+            : new URL("manifest.json", trimmed.endsWith("/") ? trimmed : `${trimmed}/`).toString();
+        const filesBaseUrl = new URL("files/", manifestUrl).toString();
+
+        return {
+            manifestUrl,
+            filesBaseUrl,
+        };
+    } catch {
+        return null;
+    }
+}
+
+function resolveRemoteProgramFileUrl(relativePath, sourceConfig, explicitUrl) {
+    if (typeof explicitUrl === "string" && explicitUrl.length > 0) {
+        try {
+            return new URL(explicitUrl, sourceConfig.manifestUrl).toString();
+        } catch {
+            return null;
+        }
+    }
+
+    try {
+        return new URL(encodePathSegments(relativePath), sourceConfig.filesBaseUrl).toString();
+    } catch {
+        return null;
+    }
+}
+
+async function loadProgramManifest(hostHeader) {
+    const remoteSource = normalizeRemoteProgramUpdateSource(PROGRAM_UPDATE_SOURCE_URL);
+    let rawManifest;
+
+    if (remoteSource != null) {
+        rawManifest = await fetchJSON(remoteSource.manifestUrl);
+    } else {
+        rawManifest = safeReadJSONFile(PROGRAM_MANIFEST_FILE);
+    }
+
+    return normalizeProgramManifest(rawManifest, hostHeader, remoteSource);
+}
+
+async function loadProgramFile(relativePath, hostHeader) {
+    const remoteSource = normalizeRemoteProgramUpdateSource(PROGRAM_UPDATE_SOURCE_URL);
+
+    if (remoteSource != null) {
+        const manifest = await loadProgramManifest(hostHeader);
+        if (manifest == null) {
+            throw new Error("Program update manifest is invalid.");
+        }
+
+        const fileEntry = manifest.files.find(entry => entry.path === relativePath);
+        if (fileEntry == null) {
+            return null;
+        }
+
+        return fetchText(fileEntry.sourceUrl || fileEntry.url);
+    }
+
+    const resolvedPath = resolveProgramUpdatePath(relativePath);
+    if (resolvedPath == null) {
+        throw new Error("Invalid program update file path.");
+    }
+
+    if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+        return null;
+    }
+
+    return fs.readFileSync(resolvedPath, "utf8");
+}
+
+function normalizeProgramManifest(rawManifest, hostHeader, remoteSource) {
     if (!rawManifest || typeof rawManifest !== "object") {
         return null;
     }
@@ -168,11 +286,23 @@ function normalizeProgramManifest(rawManifest, hostHeader) {
             }
 
             const normalizedPath = entry.path.replace(/\\/g, "/");
+            const sourceUrl = remoteSource != null
+                ? resolveRemoteProgramFileUrl(normalizedPath, remoteSource, entry.url)
+                : typeof entry.url === "string" && entry.url.length > 0
+                    ? entry.url
+                    : null;
+
+            if (remoteSource != null && sourceUrl == null) {
+                return null;
+            }
 
             return {
                 path: normalizedPath,
+                sourceUrl,
                 url: typeof entry.url === "string" && entry.url.length > 0
-                    ? entry.url
+                    ? (remoteSource != null
+                        ? `${protocol}://${hostHeader}/updates/program/files/${encodePathSegments(normalizedPath)}`
+                        : entry.url)
                     : `${protocol}://${hostHeader}/updates/program/files/${encodePathSegments(normalizedPath)}`,
             };
         })
@@ -214,33 +344,40 @@ const server = http.createServer(async (req, res) => {
 
     // GET /updates/program/manifest - program update manifest for ComputerCraft clients
     if (method === "GET" && pathname === "/updates/program/manifest") {
-        if (!fs.existsSync(PROGRAM_MANIFEST_FILE)) {
-            return sendError(res, 404, "Program update manifest not found.");
-        }
+        try {
+            const normalizedManifest = await loadProgramManifest(hostHeader);
+            if (normalizedManifest == null) {
+                return sendError(res, 500, "Program update manifest is invalid.");
+            }
 
-        const manifest = safeReadJSONFile(PROGRAM_MANIFEST_FILE);
-        const normalizedManifest = normalizeProgramManifest(manifest, hostHeader);
-        if (normalizedManifest == null) {
-            return sendError(res, 500, "Program update manifest is invalid.");
+            return sendJSON(res, 200, normalizedManifest);
+        } catch (error) {
+            const message = error && error.message ? error.message : String(error);
+            const status = message.includes("HTTP 404") ? 404 : 500;
+            return sendError(res, status, `Failed to load program update manifest: ${message}`);
         }
-
-        return sendJSON(res, 200, normalizedManifest);
     }
 
     // GET /updates/program/files/:path - raw program file payload
     const programFileMatch = pathname.match(/^\/updates\/program\/files\/(.+)$/);
     if (method === "GET" && programFileMatch) {
         const relativeFilePath = decodeURIComponent(programFileMatch[1]);
-        const resolvedPath = resolveProgramUpdatePath(relativeFilePath);
-        if (resolvedPath == null) {
-            return sendError(res, 400, "Invalid program update file path.");
-        }
+        try {
+            const fileBody = await loadProgramFile(relativeFilePath, hostHeader);
+            if (fileBody == null) {
+                return sendError(res, 404, "Program update file not found.");
+            }
 
-        if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
-            return sendError(res, 404, "Program update file not found.");
-        }
+            return sendText(res, 200, fileBody, "text/plain; charset=utf-8");
+        } catch (error) {
+            const message = error && error.message ? error.message : String(error);
+            if (message === "Invalid program update file path.") {
+                return sendError(res, 400, message);
+            }
 
-        return sendText(res, 200, fs.readFileSync(resolvedPath, "utf8"), "text/plain; charset=utf-8");
+            const status = message.includes("HTTP 404") ? 404 : 500;
+            return sendError(res, status, `Failed to load program update file: ${message}`);
+        }
     }
 
     // POST /addresses  - add one  body: { name, address }
