@@ -15,6 +15,7 @@ const PROGRAM_MANIFEST_FILE = path.join(PROGRAM_UPDATE_ROOT, "manifest.json");
 const PROGRAM_FILES_ROOT = path.join(PROGRAM_UPDATE_ROOT, "files");
 const PROGRAM_UPDATE_SOURCE_URL = process.env.PROGRAM_UPDATE_SOURCE_URL || "";
 const EMPTY_STORE = { addresses: [] };
+let requestCounter = 0;
 
 function writeStore(store) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
@@ -105,6 +106,19 @@ function sendJSON(res, status, data) {
 
 function sendError(res, status, message) {
     sendJSON(res, status, { error: message });
+}
+
+function getClientAddress(req) {
+    const forwardedFor = req.headers["x-forwarded-for"];
+    if (typeof forwardedFor === "string" && forwardedFor.length > 0) {
+        return forwardedFor.split(",")[0].trim();
+    }
+
+    if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
+        return forwardedFor[0];
+    }
+
+    return req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : "unknown";
 }
 
 function safeReadJSONFile(filePath) {
@@ -226,8 +240,10 @@ async function loadProgramManifest(hostHeader) {
     let rawManifest;
 
     if (remoteSource != null) {
+        console.log(`[updates] Loading remote program manifest from ${remoteSource.manifestUrl}`);
         rawManifest = await fetchJSON(remoteSource.manifestUrl);
     } else {
+        console.log(`[updates] Loading local program manifest from ${PROGRAM_MANIFEST_FILE}`);
         rawManifest = safeReadJSONFile(PROGRAM_MANIFEST_FILE);
     }
 
@@ -245,9 +261,11 @@ async function loadProgramFile(relativePath, hostHeader) {
 
         const fileEntry = manifest.files.find(entry => entry.path === relativePath);
         if (fileEntry == null) {
+            console.warn(`[updates] Program file not listed in manifest: ${relativePath}`);
             return null;
         }
 
+        console.log(`[updates] Fetching remote program file ${relativePath} from ${fileEntry.sourceUrl || fileEntry.url}`);
         return fetchText(fileEntry.sourceUrl || fileEntry.url);
     }
 
@@ -257,9 +275,11 @@ async function loadProgramFile(relativePath, hostHeader) {
     }
 
     if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+        console.warn(`[updates] Local program file not found: ${relativePath}`);
         return null;
     }
 
+    console.log(`[updates] Reading local program file ${relativePath} from ${resolvedPath}`);
     return fs.readFileSync(resolvedPath, "utf8");
 }
 
@@ -314,6 +334,14 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${hostHeader}`);
     const pathname = url.pathname;
     const method = req.method;
+    const requestId = ++requestCounter;
+    const startedAt = Date.now();
+    const clientAddress = getClientAddress(req);
+
+    console.log(`[req:${requestId}] ${method} ${pathname}${url.search} from ${clientAddress}`);
+    res.on("finish", () => {
+        console.log(`[req:${requestId}] ${method} ${pathname} -> ${res.statusCode} (${Date.now() - startedAt}ms)`);
+    });
 
     // OPTIONS preflight
     if (method === "OPTIONS") {
@@ -450,6 +478,11 @@ if (!ensureDataFile()) {
 server.listen(PORT, HOST, () => {
     console.log(`Address book server running at http://${HOST}:${PORT}`);
     console.log(`Data file: ${DATA_FILE}`);
+    if (PROGRAM_UPDATE_SOURCE_URL.trim() !== "") {
+        console.log(`Program update source: remote (${PROGRAM_UPDATE_SOURCE_URL})`);
+    } else {
+        console.log(`Program update source: local (${PROGRAM_UPDATE_ROOT})`);
+    }
     console.log(`  GET    /addresses          - list all`);
     console.log(`  POST   /addresses          - add entry`);
     console.log(`  PUT    /addresses/:name    - update entry`);
