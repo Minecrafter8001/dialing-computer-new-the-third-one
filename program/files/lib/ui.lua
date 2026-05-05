@@ -42,7 +42,15 @@ local function printAddressBook(addressBook)
 
     for index = 1, #addressBook do
         local entry = addressBook[index]
-        print(index .. ". " .. entry.name .. " -> " .. util.stringifyAddress(entry.address) .. " (" .. (#entry.address-1) .. ")")
+        local addressType = "unknown"
+        if #entry.address == 7 then
+            addressType = "Interstellar"
+        elseif #entry.address == 8 then
+            addressType = "Intergalactic"
+        elseif #entry.address == 9 then
+            addressType = "Intergate"
+        end
+        print(index .. ". " .. entry.name .. " -> " .. util.stringifyAddress(entry.address) .. " (" .. addressType .. ")")
     end
 end
 
