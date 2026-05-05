@@ -1,21 +1,6 @@
 # Auto Update
 
-This project now supports auto updates for both:
-- The Node.js server (`master-server`)
-- The ComputerCraft program (`program`)
-
-## Server Auto Update
-
-The server updater checks a remote JSON manifest on a schedule.
-If the manifest version is newer than the local `.server-version.json`, it downloads files, writes them into `master-server`, and exits so PM2 can restart it.
-
-Configure PM2 env values in `ecosystem.config.js`:
-- `AUTO_UPDATE_ENABLED`: `"true"` or `"false"`
-- `AUTO_UPDATE_MANIFEST_URL`: URL to a manifest with `{ version, files[] }`
-- `AUTO_UPDATE_INTERVAL_MS`: check interval in milliseconds
-- `UPDATE_BASE_PROTOCOL`: optional override for generated update URLs (`http` or `https`)
-
-Manifest format example is in `update-manifest.example.json`.
+This project supports auto updates for the ComputerCraft program (`program`).
 
 ## Program Auto Update
 

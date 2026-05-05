@@ -5,7 +5,6 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const updater = require("./updater");
 const packageInfo = require("./package.json");
 
 const PORT = Number(process.env.PORT) || 2088;
@@ -16,10 +15,6 @@ const PROGRAM_MANIFEST_FILE = path.join(PROGRAM_UPDATE_ROOT, "manifest.json");
 const PROGRAM_FILES_ROOT = path.join(PROGRAM_UPDATE_ROOT, "files");
 const PROGRAM_UPDATE_SOURCE_URL = process.env.PROGRAM_UPDATE_SOURCE_URL || "";
 const EMPTY_STORE = { addresses: [] };
-
-const AUTO_UPDATE_ENABLED = process.env.AUTO_UPDATE_ENABLED === "true";
-const AUTO_UPDATE_MANIFEST_URL = process.env.AUTO_UPDATE_MANIFEST_URL || "";
-const AUTO_UPDATE_INTERVAL_MS = Number(process.env.AUTO_UPDATE_INTERVAL_MS) || 300000;
 
 function writeStore(store) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
@@ -332,13 +327,11 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(res, 200, loadStore());
     }
 
-    // GET /version - server and updater status
+    // GET /version - server version info
     if (method === "GET" && pathname === "/version") {
-        const updateState = updater.getUpdateState();
         return sendJSON(res, 200, {
             name: packageInfo.name,
             version: packageInfo.version,
-            update: updateState,
         });
     }
 
@@ -454,11 +447,6 @@ if (!ensureDataFile()) {
     process.exit(1);
 }
 
-const localVersionInfo = safeReadJSONFile(path.join(__dirname, ".server-version.json"));
-if (localVersionInfo && localVersionInfo.version) {
-    console.log(`Current runtime update version: ${localVersionInfo.version}`);
-}
-
 server.listen(PORT, HOST, () => {
     console.log(`Address book server running at http://${HOST}:${PORT}`);
     console.log(`Data file: ${DATA_FILE}`);
@@ -466,15 +454,4 @@ server.listen(PORT, HOST, () => {
     console.log(`  POST   /addresses          - add entry`);
     console.log(`  PUT    /addresses/:name    - update entry`);
     console.log(`  DELETE /addresses/:name    - remove entry`);
-
-    updater.startAutoUpdate({
-        enabled: AUTO_UPDATE_ENABLED,
-        manifestUrl: AUTO_UPDATE_MANIFEST_URL,
-        intervalMs: AUTO_UPDATE_INTERVAL_MS,
-        logger: console,
-        onUpdated: () => {
-            console.log("Auto-update applied. Exiting so process manager can restart...");
-            process.exit(0);
-        },
-    });
 });
