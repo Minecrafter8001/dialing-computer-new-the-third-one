@@ -1,0 +1,17 @@
+{
+  "version": "1.0.1",
+  "files": [
+    {
+      "path": "server.js",
+      "url": "https://example.com/stargate-server/server.js"
+    },
+    {
+      "path": "updater.js",
+      "url": "https://example.com/stargate-server/updater.js"
+    },
+    {
+      "path": "package.json",
+      "url": "https://example.com/stargate-server/package.json"
+    }
+  ]
+}

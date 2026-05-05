@@ -1,0 +1,9 @@
+{
+  "name": "stargate-control-server",
+  "version": "1.0.0",
+  "description": "HTTP address book server for ComputerCraft Stargate dialing computer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

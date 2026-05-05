@@ -1,0 +1,17 @@
+{
+  "version": "1.1.0",
+  "files": [
+    { "path": "startup.lua" },
+    { "path": "dialing_computer.lua" },
+    { "path": "feedback_codes.json" },
+    { "path": "lib/address.lua" },
+    { "path": "lib/config.lua" },
+    { "path": "lib/events.lua" },
+    { "path": "lib/feedback.lua" },
+    { "path": "lib/menu.lua" },
+    { "path": "lib/stargate.lua" },
+    { "path": "lib/ui.lua" },
+    { "path": "lib/updater.lua" },
+    { "path": "lib/util.lua" }
+  ]
+}

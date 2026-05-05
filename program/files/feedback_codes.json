@@ -1,0 +1,247 @@
+{
+  "-37": {
+    "name": "TARGET_NOT_LOADED",
+    "type": "ERROR",
+    "label": "target not loaded"
+  },
+  "-36": {
+    "name": "CANNOT_ENCODE_POINT_OF_ORIGIN",
+    "type": "ERROR",
+    "label": "cannot encode point of origin"
+  },
+  "-35": {
+    "name": "CHEVRON_NOT_OPEN",
+    "type": "ERROR",
+    "label": "chevron not open"
+  },
+  "-34": {
+    "name": "CHEVRON_ALREADY_CLOSED",
+    "type": "ERROR",
+    "label": "chevron already closed"
+  },
+  "-33": {
+    "name": "CHEVRON_ALREADY_OPENED",
+    "type": "ERROR",
+    "label": "chevron already opened"
+  },
+  "-32": {
+    "name": "NOT_ROTATING",
+    "type": "INFO",
+    "label": "not rotating"
+  },
+  "-31": {
+    "name": "ROTATION_BLOCKED",
+    "type": "INFO",
+    "label": "rotation blocked"
+  },
+  "-30": {
+    "name": "INTERRUPTED_BY_INCOMING_CONNECTION",
+    "type": "ERROR",
+    "label": "interrupted by incoming connection"
+  },
+  "-29": {
+    "name": "COULD_NOT_REACH_TARGET_STARGATE",
+    "type": "MAJOR_ERROR",
+    "label": "could not reach target stargate"
+  },
+  "-28": {
+    "name": "STARGATE_DESTROYED",
+    "type": "ERROR",
+    "label": "stargate destroyed"
+  },
+  "-27": {
+    "name": "CONNECTION_FORMING",
+    "type": "ERROR",
+    "label": "connection forming"
+  },
+  "-26": {
+    "name": "WRONG_DISCONNECT_SIDE",
+    "type": "ERROR",
+    "label": "wrong disconnect side"
+  },
+  "-25": {
+    "name": "CONNECTION_REROUTED",
+    "type": "ERROR",
+    "label": "connection rerouted"
+  },
+  "-24": {
+    "name": "RAN_OUT_OF_POWER",
+    "type": "ERROR",
+    "label": "ran out of power"
+  },
+  "-23": {
+    "name": "EXCEEDED_CONNECTION_TIME",
+    "type": "ERROR",
+    "label": "exceeded connection time"
+  },
+  "-22": {
+    "name": "BLACKLISTED_BY_TARGET",
+    "type": "SKIPPABLE_ERROR",
+    "label": "blacklisted by target"
+  },
+  "-21": {
+    "name": "TARGET_BLACKLISTED",
+    "type": "MAJOR_ERROR",
+    "label": "target blacklisted"
+  },
+  "-20": {
+    "name": "NOT_WHITELISTED_BY_TARGET",
+    "type": "SKIPPABLE_ERROR",
+    "label": "not whitelisted by target"
+  },
+  "-19": {
+    "name": "TARGET_NOT_WHITELISTED",
+    "type": "MAJOR_ERROR",
+    "label": "target not whitelisted"
+  },
+  "-18": {
+    "name": "INVALID_SYSTEM_WIDE_CONNECTION",
+    "type": "MAJOR_ERROR",
+    "label": "invalid system wide connection"
+  },
+  "-17": {
+    "name": "INVALID_8_CHEVRON_ADDRESS",
+    "type": "MAJOR_ERROR",
+    "label": "invalid 8 chevron address"
+  },
+  "-16": {
+    "name": "TARGET_RESTRICTED",
+    "type": "SKIPPABLE_ERROR",
+    "label": "target restricted"
+  },
+  "-15": {
+    "name": "NO_STARGATES",
+    "type": "MAJOR_ERROR",
+    "label": "no stargates"
+  },
+  "-14": {
+    "name": "NO_DIMENSIONS",
+    "type": "MAJOR_ERROR",
+    "label": "no dimensions"
+  },
+  "-13": {
+    "name": "NO_GALAXY",
+    "type": "MAJOR_ERROR",
+    "label": "no galaxy"
+  },
+  "-12": {
+    "name": "ALREADY_CONNECTED",
+    "type": "MAJOR_ERROR",
+    "label": "already connected"
+  },
+  "-11": {
+    "name": "SAME_SYSTEM_DIAL",
+    "type": "MAJOR_ERROR",
+    "label": "same system dial"
+  },
+  "-10": {
+    "name": "SELF_DIAL",
+    "type": "MAJOR_ERROR",
+    "label": "self dial"
+  },
+  "-9": {
+    "name": "TARGET_OBSTRUCTED",
+    "type": "SKIPPABLE_ERROR",
+    "label": "target obstructed"
+  },
+  "-8": {
+    "name": "SELF_OBSTRUCTED",
+    "type": "MAJOR_ERROR",
+    "label": "self obstructed"
+  },
+  "-7": {
+    "name": "NOT_ENOUGH_POWER",
+    "type": "MAJOR_ERROR",
+    "label": "not enough power"
+  },
+  "-6": {
+    "name": "INVALID_ADDRESS",
+    "type": "MAJOR_ERROR",
+    "label": "invalid address"
+  },
+  "-5": {
+    "name": "INCOMPLETE_ADDRESS",
+    "type": "MAJOR_ERROR",
+    "label": "incomplete address"
+  },
+  "-4": {
+    "name": "ENCODE_WHEN_CONNECTED",
+    "type": "ERROR",
+    "label": "encode when connected"
+  },
+  "-3": {
+    "name": "SYMBOL_OUT_OF_BOUNDS",
+    "type": "ERROR",
+    "label": "symbol out of bounds"
+  },
+  "-2": {
+    "name": "SYMBOL_IN_ADDRESS",
+    "type": "ERROR",
+    "label": "symbol in address"
+  },
+  "-1": {
+    "name": "UNKNOWN_ERROR",
+    "type": "ERROR",
+    "label": "unknown"
+  },
+  "0": {
+    "name": "NONE",
+    "type": "INFO",
+    "label": "none"
+  },
+  "1": {
+    "name": "SYMBOL_ENCODED",
+    "type": "INFO",
+    "label": "symbol encoded"
+  },
+  "2": {
+    "name": "CONNECTION_ESTABLISHED_SYSTEM_WIDE",
+    "type": "INFO",
+    "label": "connection established system wide"
+  },
+  "3": {
+    "name": "CONNECTION_ESTABLISHED_INTERSTELLAR",
+    "type": "INFO",
+    "label": "connection established interstellar"
+  },
+  "4": {
+    "name": "CONNECTION_ESTABLISHED_INTERGALACTIC",
+    "type": "INFO",
+    "label": "connection established intergalactic"
+  },
+  "7": {
+    "name": "CONNECTION_ENDED_BY_DISCONNECT",
+    "type": "INFO",
+    "label": "connection ended by disconnect"
+  },
+  "8": {
+    "name": "CONNECTION_ENDED_BY_POINT_OF_ORIGIN",
+    "type": "INFO",
+    "label": "connection ended by point of origin"
+  },
+  "9": {
+    "name": "CONNECTION_ENDED_BY_NETWORK",
+    "type": "INFO",
+    "label": "connection ended by stargate network"
+  },
+  "10": {
+    "name": "CONNECTION_ENDED_BY_AUTOCLOSE",
+    "type": "INFO",
+    "label": "connection ended by autoclose"
+  },
+  "11": {
+    "name": "CHEVRON_RAISED",
+    "type": "INFO",
+    "label": "chevron opened"
+  },
+  "12": {
+    "name": "ROTATING",
+    "type": "INFO",
+    "label": "rotating"
+  },
+  "13": {
+    "name": "ROTATION_STOPPED",
+    "type": "INFO",
+    "label": "rotation stopped"
+  }
+}
