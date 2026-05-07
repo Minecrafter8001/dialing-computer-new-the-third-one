@@ -81,25 +81,25 @@ local function EngageChevron(interface, feedbackMessages)
     if gateType == "sgjourney:milky_way_stargate" then
         local openFeedback = interface.openChevron()
         if isFailureFeedback(openFeedback) then
-            return false, "Failed to open chevron while engaging with feedback " .. feedback.formatFeedback(feedbackMessages, openFeedback), openFeedback
+            return false, "Open chevron failed: " .. feedback.formatFeedback(feedbackMessages, openFeedback), openFeedback
         end
         sleep(CHEVRON_ACTION_DELAY)
 
         local closeFeedback = interface.closeChevron()
         if isFailureFeedback(closeFeedback) then
-            return false, "Failed to close chevron while engaging with feedback " .. feedback.formatFeedback(feedbackMessages, closeFeedback), closeFeedback
+            return false, "Close chevron failed: " .. feedback.formatFeedback(feedbackMessages, closeFeedback), closeFeedback
         end
         sleep(CHEVRON_ACTION_DELAY)
 
         return true, nil, closeFeedback
     else
         if interface.encodeChevron == nil then
-            return false, "encodeChevron is not available on this interface", nil
+            return false, "encodeChevron not available on this interface", nil
         end
 
         local feedbackCode = interface.encodeChevron()
         if isFailureFeedback(feedbackCode) then
-            return false, "encodeChevron failed with feedback " .. feedback.formatFeedback(feedbackMessages, feedbackCode), feedbackCode
+            return false, "Encode chevron failed: " .. feedback.formatFeedback(feedbackMessages, feedbackCode), feedbackCode
         end
         sleep(CHEVRON_ACTION_DELAY)
 
@@ -119,7 +119,7 @@ local function clearEngagedChevrons(interface, feedbackMessages)
 
     local feedbackCode = rotateToSymbol(interface, 0, feedbackMessages)
     if isFailureFeedback(feedbackCode) then
-        return false, "Failed to rotate to point of origin while clearing with feedback " .. feedback.formatFeedback(feedbackMessages, feedbackCode)
+        return false, "Rotate to origin failed: " .. feedback.formatFeedback(feedbackMessages, feedbackCode)
     end
 
     waitForCurrentSymbol(interface, 0)
@@ -165,7 +165,7 @@ local function dialAddress(interface, address, feedbackMessages)
         local feedbackCode = rotateToSymbol(interface, symbol, feedbackMessages)
 
         if isFailureFeedback(feedbackCode) then
-            return false, "Rotation failed on symbol " .. tostring(symbol) .. " with feedback " .. feedback.formatFeedback(feedbackMessages, feedbackCode)
+            return false, "Rotation failed (symbol " .. tostring(symbol) .. "): " .. feedback.formatFeedback(feedbackMessages, feedbackCode)
         end
 
         if type(feedbackCode) == "number" then

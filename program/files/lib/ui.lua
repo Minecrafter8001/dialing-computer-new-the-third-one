@@ -20,8 +20,9 @@ local function prompt(message, feedbackMessages)
 end
 
 local function printHeader(interface)
+    local version = util.getVersion()
     clearScreen()
-    print("Simple Dialing Computer")
+    print("Simple Dialing Computer V" .. version)
     print(string.rep("=", 23))
     if interface == nil then
         print("Gate: not connected")

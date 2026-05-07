@@ -102,6 +102,15 @@ local function getDialedAddress()
     return lastDialedAddress
 end
 
+local function getVersion()
+    local manifest, errorMessage = loadJSONFile("manifest.json")
+    if manifest == nil then
+        return "unknown"
+    end
+
+    return manifest.version or "unknown"
+end
+
 return {
     trim = trim,
     splitAddress = splitAddress,
@@ -112,4 +121,5 @@ return {
     loadJSONFile = loadJSONFile,
     setDialedAddress = setDialedAddress,
     getDialedAddress = getDialedAddress,
+    getVersion = getVersion,
 }

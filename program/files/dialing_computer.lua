@@ -7,6 +7,8 @@ local stargate = require("lib.stargate")
 local ui = require("lib.ui")
 local menu = require("lib.menu")
 local events = require("lib.events")
+local config = require("lib.config")
+local updater = require("lib.updater")
 
 local feedbackMessages = {}
 
@@ -122,9 +124,26 @@ local function main()
         events.backgroundEventListener(feedbackMessages)
     end
 
+    local function updatePoller()
+        local interval = config.AUTO_UPDATE_CHECK_INTERVAL
+        if type(interval) ~= "number" or interval <= 0 then
+            return
+        end
+        while true do
+            sleep(interval)
+            local ok, updated, message = updater.runAutoUpdate(config)
+            -- runAutoUpdate reboots if an update was applied, so execution
+            -- only continues here when there was no update or a check failure.
+            if not ok and message ~= nil then
+                -- silently log; avoid disrupting the UI
+                events.logEvent("update_check_failed", message)
+            end
+        end
+    end
+
     -- Run until the menu finishes (returns)
     -- Events will be processed in the background
-    parallel.waitForAny(menuWrapper, eventWrapper)
+    parallel.waitForAny(menuWrapper, eventWrapper, updatePoller)
 end
 
 main()

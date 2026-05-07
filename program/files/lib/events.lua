@@ -99,7 +99,8 @@ local function buildEventSummary(eventName, args)
     elseif eventName == "stargate_message_received" then
         return "Message: " .. tostring(args[1])
     end
-    return eventName
+    -- format unknown event names: strip "stargate_" prefix, replace underscores with spaces
+    return eventName:gsub("^stargate_", ""):gsub("_", " ")
 end
 
 local function getLastEventSummary()

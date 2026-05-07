@@ -158,14 +158,14 @@ local function performDial(interface, label, addressToUse, feedbackMessages)
     ui.clearScreen()
     print("Dialing: " .. label)
     print(util.stringifyAddress(addressToUse))
-    print()
+    print()  -- line 3: reserved for Gate status (drawStatusBar)
+    print()  -- line 4: reserved for Last event (drawStatusBar)
 
     local ok, result = stargate.dialAddress(interface, util.copyAddress(addressToUse), feedbackMessages)
     if ok then
         print("Dial complete.")
-        print("Final feedback: " .. feedback.formatFeedback(feedbackMessages, result))
     else
-        printError(result)
+        printError("Dial failed: " .. tostring(result))
     end
 
     ui.pause()
