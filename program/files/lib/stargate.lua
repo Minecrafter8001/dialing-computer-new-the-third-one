@@ -75,34 +75,36 @@ local function rotateToSymbol(interface, symbol, feedbackMessages)
     return feedbackCode
 end
 
-local function raiseChevronIfNeeded(interface)
-    if interface.openChevron == nil then
-        return true, nil
+local function EngageChevron(interface, feedbackMessages)
+    local gateType = interface.getStargateType()
+
+    if gateType == "sgjourney:milky_way_stargate" then
+        local openFeedback = interface.openChevron()
+        if isFailureFeedback(openFeedback) then
+            return false, "Failed to open chevron while engaging with feedback " .. feedback.formatFeedback(feedbackMessages, openFeedback), openFeedback
+        end
+        sleep(CHEVRON_ACTION_DELAY)
+
+        local closeFeedback = interface.closeChevron()
+        if isFailureFeedback(closeFeedback) then
+            return false, "Failed to close chevron while engaging with feedback " .. feedback.formatFeedback(feedbackMessages, closeFeedback), closeFeedback
+        end
+        sleep(CHEVRON_ACTION_DELAY)
+
+        return true, nil, closeFeedback
+    else
+        if interface.encodeChevron == nil then
+            return false, "encodeChevron is not available on this interface", nil
+        end
+
+        local feedbackCode = interface.encodeChevron()
+        if isFailureFeedback(feedbackCode) then
+            return false, "encodeChevron failed with feedback " .. feedback.formatFeedback(feedbackMessages, feedbackCode), feedbackCode
+        end
+        sleep(CHEVRON_ACTION_DELAY)
+
+        return true, nil, feedbackCode
     end
-
-    local feedbackCode = interface.openChevron()
-    if isFailureFeedback(feedbackCode) then
-        return false, feedbackCode
-    end
-
-    sleep(CHEVRON_ACTION_DELAY)
-
-    return true, feedbackCode
-end
-
-local function closeChevronAndEncode(interface, feedbackMessages)
-    if interface.closeChevron == nil then
-        return false, "closeChevron is not available on this interface", nil
-    end
-
-    local feedbackCode = interface.closeChevron()
-    if isFailureFeedback(feedbackCode) then
-        return false, "closeChevron failed with feedback " .. feedback.formatFeedback(feedbackMessages, feedbackCode), feedbackCode
-    end
-
-    sleep(CHEVRON_ACTION_DELAY)
-
-    return true, feedbackCode, feedbackCode
 end
 
 local function clearEngagedChevrons(interface, feedbackMessages)
@@ -122,25 +124,20 @@ local function clearEngagedChevrons(interface, feedbackMessages)
 
     waitForCurrentSymbol(interface, 0)
 
-    local opened, openFeedback = raiseChevronIfNeeded(interface)
-    if not opened then
-        return false, "Failed to open chevron while clearing with feedback " .. feedback.formatFeedback(feedbackMessages, openFeedback)
-    end
-
-    local closed, closeMessage, closeFeedback = closeChevronAndEncode(interface, feedbackMessages)
-    if not closed then
-        if isIgnoredClearFeedback(closeFeedback) then
-            return true, closeFeedback
+    local ok, engageMessage, engageFeedback = EngageChevron(interface, feedbackMessages)
+    if not ok then
+        if isIgnoredClearFeedback(engageFeedback) then
+            return true, engageFeedback
         end
 
-        return false, closeMessage
+        return false, engageMessage
     end
 
-    if isIgnoredClearFeedback(closeFeedback) then
-        return true, closeFeedback
+    if isIgnoredClearFeedback(engageFeedback) then
+        return true, engageFeedback
     end
 
-    return true, closeFeedback
+    return true, engageFeedback
 end
 
 local function dialAddress(interface, address, feedbackMessages)
@@ -177,22 +174,13 @@ local function dialAddress(interface, address, feedbackMessages)
 
         waitForCurrentSymbol(interface, symbol)
 
-        local opened, openFeedback = raiseChevronIfNeeded(interface)
-        if not opened then
-            return false, "Failed to open chevron for symbol " .. tostring(symbol) .. " with feedback " .. feedback.formatFeedback(feedbackMessages, openFeedback)
-        end
-
-        if type(openFeedback) == "number" then
-            lastFeedback = openFeedback
-        end
-
-        local ok, encodeMessage, encodeResult = closeChevronAndEncode(interface, feedbackMessages)
+        local ok, engageMessage, engageFeedback = EngageChevron(interface, feedbackMessages)
         if not ok then
-            return false, encodeMessage
+            return false, engageMessage
         end
 
-        if type(encodeResult) == "number" then
-            lastFeedback = encodeResult
+        if type(engageFeedback) == "number" then
+            lastFeedback = engageFeedback
         end
 
         sleep(0.2)
@@ -211,8 +199,6 @@ return {
     waitForCurrentSymbol = waitForCurrentSymbol,
     getRotationDirection = getRotationDirection,
     rotateToSymbol = rotateToSymbol,
-    raiseChevronIfNeeded = raiseChevronIfNeeded,
-    closeChevronAndEncode = closeChevronAndEncode,
     clearEngagedChevrons = clearEngagedChevrons,
     dialAddress = dialAddress,
 }
