@@ -226,7 +226,24 @@ local function parseEntries(entries)
     return parsed, nil
 end
 
+local function ensureLocalAddressBookExists()
+    local filePath = getLocalAddressBookFile()
+    if fs.exists(filePath) then
+        return true, nil
+    end
+
+    return util.saveJSONFile(filePath, {
+        addresses = {},
+        updatedAt = os.epoch("utc"),
+    })
+end
+
 local function loadLocalAddressBook()
+    local initialized, initError = ensureLocalAddressBookExists()
+    if not initialized then
+        return nil, initError
+    end
+
     local decoded, fileError = util.loadJSONFile(getLocalAddressBookFile())
     if decoded == nil then
         return nil, fileError

@@ -63,7 +63,13 @@ local function saveJSONFile(filename, data)
         return false, "Could not write " .. filename
     end
 
-    handle.write(serializeJSON(data))
+    local encoded, encodeError = serializeJSON(data)
+    if encoded == nil then
+        handle.close()
+        return false, "Could not encode JSON for " .. filename .. ": " .. tostring(encodeError)
+    end
+
+    handle.write(encoded)
     handle.close()
 
     return true
@@ -71,7 +77,7 @@ end
 
 local function loadJSONFile(filename)
     if not fs.exists(filename) then
-        return {}, nil
+        return nil, "File does not exist: " .. filename
     end
 
     local handle = fs.open(filename, "r")
@@ -82,17 +88,26 @@ local function loadJSONFile(filename)
     local contents = handle.readAll()
     handle.close()
 
-    if contents == nil or contents == "" then
-        return {}, nil
+    if contents == nil or contents:match("^%s*$") then
+        return nil, "File is empty: " .. filename
     end
 
-    local decoded = unserializeJSON(contents)
+    local ok, decoded, decodeError = pcall(unserializeJSON, contents)
+    if not ok then
+        return nil, "JSON parse failed in " .. filename .. ": " .. tostring(decoded)
+    end
+
+    if decoded == nil then
+        return nil, "JSON is invalid in " .. filename .. ": " .. tostring(decodeError)
+    end
+
     if type(decoded) ~= "table" then
-        return nil, "JSON is invalid."
+        return nil, "JSON root must be an object or array in " .. filename
     end
 
     return decoded, nil
 end
+
 
 local function setDialedAddress(address)
     lastDialedAddress = address
@@ -104,12 +119,18 @@ end
 
 local function getVersion()
     local manifest, errorMessage = loadJSONFile("manifest.json")
+
     if manifest == nil then
-        return "unknown"
+        return "unknown (failed to load manifest: " .. tostring(errorMessage) .. ")"
     end
 
-    return manifest.version or "unknown"
+    if manifest.version == nil then
+        return "unknown (manifest.json has no 'version' field)"
+    end
+
+    return manifest.version
 end
+
 
 return {
     trim = trim,

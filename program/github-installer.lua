@@ -1,9 +1,11 @@
+--Author: minecrafter8001
+--Source: https://github.com/Minecrafter8001/dialing-computer-new-the-third-one/tree/main
 -- GitHub installer for the dialing computer program.
 -- Usage:
 --   github-installer
 
 
-baseUrl = "https://raw.githubusercontent.com/Minecrafter8001/dialing-computer-new-the-third-one/main/program"
+baseUrl = "https://raw.githubusercontent.com/Minecrafter8001/dialing-computer-new-the-third-one/main/program/files"
 baseUrl = baseUrl:gsub("/+$", "")
 
 local unserializeJSON = textutils.unserialiseJSON or textutils.unserializeJSON
