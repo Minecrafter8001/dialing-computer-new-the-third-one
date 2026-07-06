@@ -3,6 +3,7 @@
   "files": [
     { "path": "startup.lua" },
     { "path": "dialing_computer.lua" },
+    { "path": "manifest.json" },
     { "path": "feedback_codes.json" },
     { "path": "lib/address.lua" },
     { "path": "lib/config.lua" },
