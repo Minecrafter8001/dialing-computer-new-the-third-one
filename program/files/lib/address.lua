@@ -6,9 +6,31 @@ local config = require("lib.config")
 local BASE_SYMBOL_COUNT = 6
 local MIN_ADDRESS_LENGTH = 7
 local MAX_ADDRESS_LENGTH = 9
+local DEFAULT_LOCAL_ADDRESS_BOOK_FILE = "address_book_local.json"
 
 local serializeJSON = textutils.serialiseJSON or textutils.serializeJSON
 local unserializeJSON = textutils.unserialiseJSON or textutils.unserializeJSON
+
+local function getLocalAddressBookFile()
+    local fileName = config.ADDRESS_BOOK_FILENAME
+    if type(fileName) == "string" and fileName ~= "" then
+        return fileName
+    end
+
+    return DEFAULT_LOCAL_ADDRESS_BOOK_FILE
+end
+
+local function isMasterServerEnabled()
+    return config.MASTER_SERVER_ENABLED ~= false
+end
+
+local function isAddressBookServerEnabled()
+    if not isMasterServerEnabled() then
+        return false
+    end
+
+    return config.ADDRESS_BOOK_SERVER_ENABLED ~= false
+end
 
 local function getBaseURL()
     return config.ADDRESS_SERVER_URL or "http://localhost:8088"
@@ -20,12 +42,15 @@ local function httpGet(path)
     if not ok or not response then
         return nil, "HTTP request failed: " .. url
     end
+
     local body = response.readAll()
     response.close()
+
     local decoded = unserializeJSON(body)
     if decoded == nil then
         return nil, "Server returned invalid JSON."
     end
+
     return decoded, nil
 end
 
@@ -36,34 +61,38 @@ local function httpPost(path, payload)
     if not ok or not response then
         return nil, "HTTP request failed: " .. url
     end
+
     local responseBody = response.readAll()
     local status = response.getResponseCode()
     response.close()
+
     local decoded = unserializeJSON(responseBody)
     if decoded == nil then
         return nil, "Server returned invalid JSON."
     end
+
     if status >= 400 then
         return nil, decoded.error or ("Server error " .. status)
     end
+
     return decoded, nil
 end
 
 local function httpPut(path, payload)
     local url = getBaseURL() .. path
     local body = serializeJSON(payload)
-    local ok, response = pcall(http.request, url, body, { ["Content-Type"] = "application/json" }, false)
-    if not ok then
-        return nil, "HTTP request failed: " .. url
-    end
-    -- http.request is async; use synchronous wrapper via http.put if available
-    -- Fallback: use a raw request
-    local req = http.request({
+
+    local ok = pcall(http.request, {
         url = url,
         method = "PUT",
         body = body,
         headers = { ["Content-Type"] = "application/json" },
     })
+
+    if not ok then
+        return nil, "HTTP request failed: " .. url
+    end
+
     local event
     repeat
         event = { os.pullEvent() }
@@ -72,25 +101,35 @@ local function httpPut(path, payload)
     if event[1] == "http_failure" then
         return nil, "HTTP PUT failed: " .. url
     end
+
     local responseBody = event[3].readAll()
     local status = event[3].getResponseCode()
     event[3].close()
+
     local decoded = unserializeJSON(responseBody)
     if decoded == nil then
         return nil, "Server returned invalid JSON."
     end
+
     if status >= 400 then
         return nil, decoded.error or ("Server error " .. status)
     end
+
     return decoded, nil
 end
 
 local function httpDelete(path)
     local url = getBaseURL() .. path
-    local req = http.request({
+
+    local ok = pcall(http.request, {
         url = url,
         method = "DELETE",
     })
+
+    if not ok then
+        return nil, "HTTP request failed: " .. url
+    end
+
     local event
     repeat
         event = { os.pullEvent() }
@@ -99,16 +138,20 @@ local function httpDelete(path)
     if event[1] == "http_failure" then
         return nil, "HTTP DELETE failed: " .. url
     end
+
     local responseBody = event[3].readAll()
     local status = event[3].getResponseCode()
     event[3].close()
+
     local decoded = unserializeJSON(responseBody)
     if decoded == nil then
         return nil, "Server returned invalid JSON."
     end
+
     if status >= 400 then
         return nil, decoded.error or ("Server error " .. status)
     end
+
     return decoded, nil
 end
 
@@ -156,30 +199,23 @@ local function normalizeAddress(input)
     return normalizeAddress(parts)
 end
 
-local function loadAddressBook()
-    local decoded, errorMessage = httpGet("/addresses")
-    if decoded == nil then
-        return nil, errorMessage
+local function parseEntries(entries)
+    if type(entries) ~= "table" then
+        return nil, "Address book JSON is invalid. Expected an array of entries."
     end
 
-    if type(decoded) ~= "table" or type(decoded.addresses) ~= "table" then
-        return nil, "Server returned invalid address book JSON. Expected { addresses = [...] }."
-    end
-
-    local entries = decoded.addresses
-
-    local addressBook = {}
+    local parsed = {}
 
     for index = 1, #entries do
         local entry = entries[index]
         if type(entry) == "table" then
             local name = util.trim(tostring(entry.name or ""))
-            local address, addressError = normalizeAddress(entry.address)
+            local normalizedAddress, addressError = normalizeAddress(entry.address)
 
-            if name ~= "" and address ~= nil then
-                addressBook[#addressBook + 1] = {
+            if name ~= "" and normalizedAddress ~= nil then
+                parsed[#parsed + 1] = {
                     name = name,
-                    address = address,
+                    address = normalizedAddress,
                 }
             elseif addressError ~= nil then
                 printError("Skipping invalid saved entry #" .. index .. ": " .. addressError)
@@ -187,39 +223,186 @@ local function loadAddressBook()
         end
     end
 
-    return addressBook
+    return parsed, nil
+end
+
+local function loadLocalAddressBook()
+    local decoded, fileError = util.loadJSONFile(getLocalAddressBookFile())
+    if decoded == nil then
+        return nil, fileError
+    end
+
+    local entries = decoded
+    if type(decoded) == "table" and type(decoded.addresses) == "table" then
+        entries = decoded.addresses
+    end
+
+    return parseEntries(entries)
+end
+
+local function saveLocalAddressBook(addressBook)
+    local serialized = {}
+
+    for index = 1, #addressBook do
+        local entry = addressBook[index]
+        serialized[index] = {
+            name = entry.name,
+            address = util.copyAddress(entry.address),
+        }
+    end
+
+    return util.saveJSONFile(getLocalAddressBookFile(), {
+        addresses = serialized,
+        updatedAt = os.epoch("utc"),
+    })
+end
+
+local function findEntryIndex(addressBook, name)
+    for index = 1, #addressBook do
+        if addressBook[index].name == name then
+            return index
+        end
+    end
+
+    return nil
+end
+
+local function loadAddressBook()
+    local localAddressBook, localError = loadLocalAddressBook()
+    if localAddressBook == nil then
+        return nil, localError
+    end
+
+    if not isAddressBookServerEnabled() then
+        return localAddressBook
+    end
+
+    local decoded, _ = httpGet("/addresses")
+    if decoded == nil then
+        return localAddressBook
+    end
+
+    if type(decoded) ~= "table" or type(decoded.addresses) ~= "table" then
+        return localAddressBook
+    end
+
+    local parsed, parseError = parseEntries(decoded.addresses)
+    if parsed == nil then
+        return localAddressBook
+    end
+
+    -- Keep a local mirror so the program can keep running offline.
+    saveLocalAddressBook(parsed)
+    return parsed
 end
 
 local function saveAddressBook(addressBook)
-    -- The HTTP API manages individual entries; this is a no-op bulk save.
-    -- Add/edit/remove operations call the API directly via addEntry/updateEntry/removeEntry.
-    return true
+    return saveLocalAddressBook(addressBook)
 end
 
 local function addEntry(name, address)
-    local _, errorMessage = httpPost("/addresses", { name = name, address = address })
-    if errorMessage ~= nil then
-        return false, errorMessage
+    local normalizedAddress, normalizeError = normalizeAddress(address)
+    if normalizedAddress == nil then
+        return false, normalizeError
     end
+
+    local localAddressBook, loadError = loadLocalAddressBook()
+    if localAddressBook == nil then
+        return false, loadError
+    end
+
+    if findEntryIndex(localAddressBook, name) ~= nil then
+        return false, "Address already exists: " .. name
+    end
+
+    localAddressBook[#localAddressBook + 1] = {
+        name = name,
+        address = normalizedAddress,
+    }
+
+    local saved, saveError = saveLocalAddressBook(localAddressBook)
+    if not saved then
+        return false, saveError
+    end
+
+    if isAddressBookServerEnabled() then
+        httpPost("/addresses", { name = name, address = normalizedAddress })
+    end
+
     return true
 end
 
 local function updateEntry(oldName, name, address)
     local payload = {}
-    if name ~= nil then payload.name = name end
-    if address ~= nil then payload.address = address end
-    local _, errorMessage = httpPut("/addresses/" .. textutils.urlEncode(oldName), payload)
-    if errorMessage ~= nil then
-        return false, errorMessage
+    if name ~= nil then
+        payload.name = name
     end
+
+    local normalizedAddress = nil
+    if address ~= nil then
+        local normalizeError
+        normalizedAddress, normalizeError = normalizeAddress(address)
+        if normalizedAddress == nil then
+            return false, normalizeError
+        end
+        payload.address = normalizedAddress
+    end
+
+    local localAddressBook, loadError = loadLocalAddressBook()
+    if localAddressBook == nil then
+        return false, loadError
+    end
+
+    local index = findEntryIndex(localAddressBook, oldName)
+    if index == nil then
+        return false, "Address not found: " .. oldName
+    end
+
+    if name ~= nil and name ~= "" and name ~= oldName then
+        if findEntryIndex(localAddressBook, name) ~= nil then
+            return false, "Address already exists: " .. name
+        end
+        localAddressBook[index].name = name
+    end
+
+    if normalizedAddress ~= nil then
+        localAddressBook[index].address = normalizedAddress
+    end
+
+    local saved, saveError = saveLocalAddressBook(localAddressBook)
+    if not saved then
+        return false, saveError
+    end
+
+    if isAddressBookServerEnabled() then
+        httpPut("/addresses/" .. textutils.urlEncode(oldName), payload)
+    end
+
     return true
 end
 
 local function removeEntry(name)
-    local _, errorMessage = httpDelete("/addresses/" .. textutils.urlEncode(name))
-    if errorMessage ~= nil then
-        return false, errorMessage
+    local localAddressBook, loadError = loadLocalAddressBook()
+    if localAddressBook == nil then
+        return false, loadError
     end
+
+    local index = findEntryIndex(localAddressBook, name)
+    if index == nil then
+        return false, "Address not found: " .. name
+    end
+
+    table.remove(localAddressBook, index)
+
+    local saved, saveError = saveLocalAddressBook(localAddressBook)
+    if not saved then
+        return false, saveError
+    end
+
+    if isAddressBookServerEnabled() then
+        httpDelete("/addresses/" .. textutils.urlEncode(name))
+    end
+
     return true
 end
 

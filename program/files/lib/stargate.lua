@@ -9,7 +9,7 @@ local CHEVRON_ACTION_DELAY = 0.3
 local lastRotationDirection = nil
 
 local function findInterface()
-    return peripheral.find("basic_interface")
+    return peripheral.find("advanced_crystal_interface") or peripheral.find("crystal_interface") or peripheral.find("basic_interface")
 end
 
 local function describeInterface(interface)

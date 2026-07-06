@@ -171,6 +171,10 @@ local function applyUpdateFiles(downloaded)
 end
 
 local function checkForUpdates(config)
+    if config.MASTER_SERVER_ENABLED == false then
+        return true, false, "Master server disabled."
+    end
+
     if config.AUTO_UPDATE_ENABLED ~= true then
         return true, false, "Auto-update disabled."
     end
