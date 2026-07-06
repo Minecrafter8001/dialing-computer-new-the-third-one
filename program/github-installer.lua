@@ -1,15 +1,9 @@
 -- GitHub installer for the dialing computer program.
 -- Usage:
---   github-installer <github-raw-base-url>
--- Example:
---   github-installer https://raw.githubusercontent.com/Minecrafter8001/dialing-computer-new-the-third-one/main/program
+--   github-installer
 
-local baseUrl = arg and arg[1]
 
-if not baseUrl or baseUrl == "" then
-    baseUrl = "https://raw.githubusercontent.com/Minecrafter8001/dialing-computer-new-the-third-one/main/program"
-end
-
+baseUrl = "https://raw.githubusercontent.com/Minecrafter8001/dialing-computer-new-the-third-one/main/program"
 baseUrl = baseUrl:gsub("/+$", "")
 
 local unserializeJSON = textutils.unserialiseJSON or textutils.unserializeJSON
